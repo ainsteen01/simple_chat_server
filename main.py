@@ -1,16 +1,14 @@
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Dict
 
 app = FastAPI()
 
-# mobile_number -> WebSocket
 active_connections: Dict[str, WebSocket] = {}
 
 @app.websocket("/ws/{mobile}")
 async def websocket_endpoint(websocket: WebSocket, mobile: str):
     await websocket.accept()
-
-    # Store connection
     active_connections[mobile] = websocket
     await broadcast_online_users()
 
@@ -20,7 +18,6 @@ async def websocket_endpoint(websocket: WebSocket, mobile: str):
 
             if data["type"] == "message":
                 to_mobile = data["to"]
-
                 message = {
                     "type": "message",
                     "from": mobile,
