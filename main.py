@@ -26,7 +26,7 @@ async def websocket_endpoint(websocket: WebSocket, mobile: str):
     active_connections[mobile] = websocket
     last_seen[mobile] = time.time()
 
-    # 🔔 Notify everyone
+    # 🔔 Broadcast presence on connect
     await broadcast_online_users()
 
     try:
@@ -37,6 +37,15 @@ async def websocket_endpoint(websocket: WebSocket, mobile: str):
             # 💓 Heartbeat
             if data.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
+                continue
+
+            # 📡 Client explicitly requests online users (IMPORTANT FIX)
+            if data.get("type") == "get_online_users":
+                users = list(active_connections.keys())
+                await websocket.send_json({
+                    "type": "online_users",
+                    "users": [u for u in users if u != mobile]
+                })
                 continue
 
             # 💬 Message handling
@@ -84,7 +93,7 @@ async def broadcast_online_users():
             cleanup_user(mobile)
 
 
-# 🧹 Background cleanup task
+# 🧹 Background cleanup task (Render-safe)
 @app.on_event("startup")
 async def start_cleanup_task():
     asyncio.create_task(cleanup_inactive_users())
